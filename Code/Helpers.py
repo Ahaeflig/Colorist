@@ -9,13 +9,11 @@ from skimage import color
 
 import random
 
-def load_image(infilename, convert_lab=False):
-    data = mpimg.imread(infilename)
-    if convert_lab:
-        data = color.rgb2lab(data)
+def load_image(infilename):
+    return mpimg.imread(infilename)
+    #return cv2.imread(infilename)
 
-    return data
-
+    
 def separate_imgs(img):
     return np.split(img, 2, axis=1)
 
@@ -38,7 +36,10 @@ def get_next_batch_from_disk(images_list, batch_size):
 
         x = cv2.normalize(x, x, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
         y = cv2.normalize(y, y, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-
+        
+        #lab_x = color.gray2lab(x[..., 0])
+        #lab_y = color.rgb2lab(y)
+        
         X.append(x)
         Y.append(y)
 
@@ -48,6 +49,34 @@ def get_next_batch_from_disk(images_list, batch_size):
     #print(type(X[1][1][1][1]))
     
     return X, Y
+
+
+def get_next_batch_from_disk2(images_list, batch_size):
+    random.shuffle(images_list)
+    imgs = [load_image(images_list[i]) for i in range(batch_size)]
+
+    X = []
+    Y = []
+
+    for img in imgs:
+        #y is in 0 - 1
+        img_hsv = img[...,0:3] / 255
+        
+        h = img_hsv[..., 0]
+        s = img_hsv[..., 1]
+        v = img_hsv[..., 2]
+
+        #To comply with opencv expected size
+        v = v[...][..., np.newaxis]
+        X.append(v)
+        
+        Y.append(np.dstack((h,s)))
+         
+    X = np.asarray(X)
+    Y = np.asarray(Y)
+    
+    return X, Y
+
 
 #Standardize X and Y
 '''
