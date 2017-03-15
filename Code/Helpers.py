@@ -10,9 +10,8 @@ from skimage import color
 import random
 
 def load_image(infilename):
-    return mpimg.imread(infilename)
-    #return cv2.imread(infilename)
-
+    #return mpimg.imread(infilename)
+    return cv2.imread(infilename)
     
 def separate_imgs(img):
     return np.split(img, 2, axis=1)
@@ -24,32 +23,30 @@ def get_files(path, ext):
     return glob.glob(os.path.join(path, ext)) 
 
 
-def get_next_batch_from_disk(images_list, batch_size):
+def get_next_batch_from_disk_RGB(images_list, batch_size):
     random.shuffle(images_list)
-    imgs = [load_image(images_list[i], convert_lab=False) for i in range(batch_size)]
+    imgs = [load_image(images_list[i]) for i in range(batch_size)]
 
     X = []
     Y = []
 
     for img in imgs:
-        y, x =  separate_imgs(img)
-
-        x = cv2.normalize(x, x, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-        y = cv2.normalize(y, y, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+        #y is in 0 - 1
+       
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = gray / 255
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = img / 255
         
-        #lab_x = color.gray2lab(x[..., 0])
-        #lab_y = color.rgb2lab(y)
+        gray = gray[...][..., np.newaxis]
+        X.append(gray)
         
-        X.append(x)
-        Y.append(y)
-
+        Y.append(img)
+         
     X = np.asarray(X)
     Y = np.asarray(Y)
     
-    #print(type(X[1][1][1][1]))
-    
     return X, Y
-
 
 def get_next_batch_from_disk2(images_list, batch_size):
     random.shuffle(images_list)
@@ -62,15 +59,15 @@ def get_next_batch_from_disk2(images_list, batch_size):
         #y is in 0 - 1
         img_hsv = img[...,0:3] / 255
         
-        h = img_hsv[..., 0]
-        s = img_hsv[..., 1]
+        y = img_hsv[..., 0]
+        u = img_hsv[..., 1]
         v = img_hsv[..., 2]
 
-        #To comply with opencv expected size
-        v = v[...][..., np.newaxis]
-        X.append(v)
+        #To comply with tensorflow expected size
+        y = y[...][..., np.newaxis]
+        X.append(y)
         
-        Y.append(np.dstack((h,s)))
+        Y.append(np.dstack((u,v)))
          
     X = np.asarray(X)
     Y = np.asarray(Y)
