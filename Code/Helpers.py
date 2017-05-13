@@ -23,7 +23,8 @@ def get_files(path, ext):
     return glob.glob(os.path.join(path, ext)) 
 
 
-def get_next_batch_from_disk_RGB(images_list, batch_size):
+
+def get_next_batch_from_disk_RGB_Gaussian(images_list, batch_size, crop_size=64):
     random.shuffle(images_list)
     imgs = [load_image(images_list[i]) for i in range(batch_size)]
 
@@ -31,8 +32,89 @@ def get_next_batch_from_disk_RGB(images_list, batch_size):
     Y = []
 
     for img in imgs:
-        #y is in 0 - 1
-       
+        
+        if img is not None:
+            heightM, widthM = img.shape[:2];
+
+            x = random.random() #[0- 1]
+            y = random.random() #[0- 1]
+
+            heightCropStart = int(x * (heightM - crop_size))
+            widthCropStart = int(y * (widthM - crop_size))
+
+            cropped = img[heightCropStart:heightCropStart+crop_size, widthCropStart:widthCropStart+crop_size]
+            
+            cropped_g = cv2.GaussianBlur(cropped, (3, 3), 0)
+
+            gray = cv2.cvtColor(cropped_g, cv2.COLOR_BGR2GRAY)
+            gray = (gray * 1./255).astype("float32");
+            img = cv2.cvtColor(cropped_g, cv2.COLOR_BGR2RGB)
+            img = (img * 1./255).astype("float32");
+
+            gray = gray[...][..., np.newaxis]
+            X.append(gray)
+
+            Y.append(img)
+        else:
+            random.shuffle(images_list)
+            imgs.append(load_image(images_list[42]))
+        
+         
+    X = np.asarray(X)
+    Y = np.asarray(Y)
+
+    return X, Y
+
+
+def get_next_batch_from_disk_RGB(images_list, batch_size, crop_size=64):
+    random.shuffle(images_list)
+    imgs = [load_image(images_list[i]) for i in range(batch_size)]
+
+    X = []
+    Y = []
+
+    for img in imgs:
+        
+        if img is not None:
+            heightM, widthM = img.shape[:2];
+
+            x = random.random() #[0- 1]
+            y = random.random() #[0- 1]
+
+            heightCropStart = int(x * (heightM - crop_size))
+            widthCropStart = int(y * (widthM - crop_size))
+
+            cropped = img[heightCropStart:heightCropStart+crop_size, widthCropStart:widthCropStart+crop_size]
+
+            gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
+            gray = (gray * 1./255).astype("float32");
+            img = cv2.cvtColor(cropped, cv2.COLOR_BGR2RGB)
+            img = (img * 1./255).astype("float32");
+
+            gray = gray[...][..., np.newaxis]
+            X.append(gray)
+
+            Y.append(img)
+        else:
+            random.shuffle(images_list)
+            imgs.append(load_image(images_list[42]))
+        
+         
+    X = np.asarray(X)
+    Y = np.asarray(Y)
+
+    return X, Y
+
+
+def get_next_batch_from_disk_RGB_Nocrop(images_list, batch_size):
+    random.shuffle(images_list)
+    imgs = [load_image(images_list[i]) for i in range(batch_size)]
+
+    X = []
+    Y = []
+
+    for img in imgs:
+        
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         gray = gray / 255
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -48,7 +130,8 @@ def get_next_batch_from_disk_RGB(images_list, batch_size):
     
     return X, Y
 
-def get_next_batch_from_disk2(images_list, batch_size):
+
+def get_next_batch_from_disk_Nocrop_HSV(images_list, batch_size):
     random.shuffle(images_list)
     imgs = [load_image(images_list[i]) for i in range(batch_size)]
 
@@ -56,23 +139,74 @@ def get_next_batch_from_disk2(images_list, batch_size):
     Y = []
 
     for img in imgs:
-        #y is in 0 - 1
-        img_hsv = img[...,0:3] / 255
+        #convert image to 32 bit 
+        img2 = (img * 1./255).astype("float32");
+        hsv = cv2.cvtColor(img2, cv2.COLOR_BGR2HSV);
         
-        y = img_hsv[..., 0]
-        u = img_hsv[..., 1]
-        v = img_hsv[..., 2]
+        h = hsv[..., 0]
+        s = hsv[..., 1]
+        v = hsv[..., 2]
 
         #To comply with tensorflow expected size
-        y = y[...][..., np.newaxis]
-        X.append(y)
+        v = v[...][..., np.newaxis]
+        X.append(v)
         
-        Y.append(np.dstack((u,v)))
+        Y.append(np.dstack((h,s)))
          
     X = np.asarray(X)
     Y = np.asarray(Y)
     
     return X, Y
+
+
+'''
+Use like:
+a = get_next_batch_from_disk_RGB_Nocrop_HSV(images_list, 1)
+
+h = a[1][0][..., 0]
+s = a[1][0][..., 1]
+v = a[0][0][..., 0]
+
+hsv = np.dstack((h,s,v))
+rgb = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+plt.imshow(rgb)
+'''
+
+def get_next_batch_from_disk_HSV(images_list, batch_size, crop_size=64):
+    random.shuffle(images_list)
+    imgs = [load_image(images_list[i]) for i in range(batch_size)]
+
+    X = []
+    Y = []
+
+    for img in imgs:
+        heightM, widthM = img.shape[:2];
+        x = random.random() #[0- 1]
+        y = random.random() #[0- 1]
+           
+        heightCropStart = int(x * (heightM - crop_size))
+        widthCropStart = int(y * (widthM - crop_size))
+
+        cropped = img[heightCropStart:heightCropStart+crop_size, widthCropStart:widthCropStart+crop_size]
+
+        hsv = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV);
+        
+        h = (hsv[..., 0] * 1./179).astype("float32");
+        s = (hsv[..., 1] * 1./255).astype("float32");
+        v = (hsv[..., 2] * 1./255).astype("float32");
+
+        #To comply with tensorflow expected size
+        v = v[...][..., np.newaxis]
+        X.append(v)
+        
+        Y.append(np.dstack((h,s)))
+        
+    X = np.asarray(X)
+    Y = np.asarray(Y)
+    
+    return X, Y
+
+
 
 
 #Standardize X and Y
